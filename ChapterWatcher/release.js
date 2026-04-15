@@ -302,6 +302,12 @@ function ask(prompt) {
     return new Promise(resolve => getIface().question(prompt, answer => resolve(answer.trim())));
 }
 
+function resolveByIdxOrName(input, keys) {
+    const idx = parseInt(input, 10);
+    if (!isNaN(idx) && idx >= 1 && idx <= keys.length) return keys[idx - 1];
+    return input;
+}
+
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function clearScreen() {
@@ -472,7 +478,8 @@ async function watchResumeSingle() {
     console.log();
     const selected = [];
     while (true) {
-        const nickname = await ask(yellow + 'Enter nickname: ' + reset);
+        const raw = await ask(yellow + 'Enter nickname or index: ' + reset);
+        const nickname = resolveByIdxOrName(raw, Object.keys(state.entries));
         if (!state.entries[nickname]) {
             console.log(red + `Nickname '${bold}${nickname}${reset}${red}' not found.` + reset);
             await pressEnter();
@@ -491,7 +498,7 @@ async function watchGroup() {
         return false;
     }
     console.log();
-    const groupName = await ask(yellow + 'Enter group name: ' + reset);
+    const groupName = resolveByIdxOrName(await ask(yellow + 'Enter group name or index: ' + reset), Object.keys(state.groups));
     if (!state.groups[groupName]) {
         console.log(red + `Group '${bold}${groupName}${reset}${red}' not found.` + reset);
         await pressEnter();
@@ -550,7 +557,7 @@ async function entriesEdit() {
         return;
     }
     console.log();
-    const nickname = await ask(yellow + 'Which nickname to edit? ' + reset);
+    const nickname = resolveByIdxOrName(await ask(yellow + 'Which nickname to edit? (name or index): ' + reset), Object.keys(state.entries));
     if (!state.entries[nickname]) {
         console.log(red + `Nickname '${bold}${nickname}${reset}${red}' not found.` + reset);
         await pressEnter();
@@ -628,7 +635,7 @@ async function entriesDelete() {
         return;
     }
     console.log();
-    const nickname = await ask(yellow + 'Which nickname to delete? ' + reset);
+    const nickname = resolveByIdxOrName(await ask(yellow + 'Which nickname to delete? (name or index): ' + reset), Object.keys(state.entries));
     if (!state.entries[nickname]) {
         console.log(red + `Nickname '${bold}${nickname}${reset}${red}' not found.` + reset);
         await pressEnter();
@@ -684,8 +691,9 @@ async function groupsCreate() {
     console.log();
     const members = [];
     while (true) {
-        const input = await ask(yellow + 'Add entry (nickname, or "done" to finish): ' + reset);
-        if (input.toLowerCase() === 'done') break;
+        const raw = await ask(yellow + 'Add entry (nickname or index, or "done" to finish): ' + reset);
+        if (raw.toLowerCase() === 'done') break;
+        const input = resolveByIdxOrName(raw, Object.keys(state.entries));
         if (!state.entries[input]) {
             console.log(red + `Nickname '${bold}${input}${reset}${red}' not found.` + reset);
             continue;
@@ -708,7 +716,7 @@ async function groupsEdit() {
         return;
     }
     console.log();
-    const name = await ask(yellow + 'Which group to edit? ' + reset);
+    const name = resolveByIdxOrName(await ask(yellow + 'Which group to edit? (name or index): ' + reset), Object.keys(state.groups));
     if (!state.groups[name]) {
         console.log(red + `Group '${bold}${name}${reset}${red}' not found.` + reset);
         await pressEnter();
@@ -720,7 +728,7 @@ async function groupsEdit() {
             label: 'Add entry', action: async () => {
                 printEntries(state.entries);
                 console.log();
-                const input = await ask(yellow + 'Nickname to add: ' + reset);
+                const input = resolveByIdxOrName(await ask(yellow + 'Nickname to add (name or index): ' + reset), Object.keys(state.entries));
                 if (!state.entries[input]) console.log(red + `Nickname '${bold}${input}${reset}${red}' not found.` + reset);
                 else if (state.groups[name].includes(input)) console.log(red + `'${input}' is already in this group.` + reset);
                 else {
@@ -740,7 +748,7 @@ async function groupsEdit() {
                 }
                 state.groups[name].forEach((n, i) => console.log(cyan + `  ${bold}[${i + 1}]${reset}${cyan} ${n}` + reset));
                 console.log();
-                const input = await ask(yellow + 'Nickname to remove: ' + reset);
+                const input = resolveByIdxOrName(await ask(yellow + 'Nickname to remove (name or index): ' + reset), state.groups[name]);
                 const idx = state.groups[name].indexOf(input);
                 if (idx === -1) console.log(red + `'${input}' is not in this group.` + reset);
                 else {
@@ -776,7 +784,7 @@ async function groupsDelete() {
         return;
     }
     console.log();
-    const name = await ask(yellow + 'Which group to delete? ' + reset);
+    const name = resolveByIdxOrName(await ask(yellow + 'Which group to delete? (name or index): ' + reset), Object.keys(state.groups));
     if (!state.groups[name]) {
         console.log(red + `Group '${bold}${name}${reset}${red}' not found.` + reset);
         await pressEnter();
