@@ -170,7 +170,7 @@ ReleaseWatcher/
 ---
 ## Contributing
 
-This is a personal userscript tailored to my own needs — no active development roadmap.
+
 
 That said, feel free to:
 
