@@ -154,6 +154,7 @@ async function checkForNewRelease(ws) {
 
     try {
         const response = await fetch(url);
+        if (response.status !== 200) return false;
         let found = false;
         let foundNumber = ws.lastNumber + 1;
 
@@ -172,6 +173,7 @@ async function checkForNewRelease(ws) {
                 const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
                 if (!titleMatch) return false;
                 const extracted = extractNumberFromTitle(titleMatch[1].trim());
+                if (extracted !== null && extracted - ws.lastNumber > 50) return false;
                 if (extracted !== null && extracted > ws.lastNumber) {
                     found = true;
                     foundNumber = extracted;
