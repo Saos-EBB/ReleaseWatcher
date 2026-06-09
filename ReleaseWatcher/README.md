@@ -63,6 +63,11 @@ Kevin Schaberl — SAOS
 
 ## Changelog
 
+### 2026-06-09 (2)
+- `package.json` mit `node-fetch` Dependency hinzugefügt
+- `mangas.json` mit initialen Einträgen (OnePiece, AniMan, Freaky) hinzugefügt
+- `.gitignore` erstellt (node_modules ausgeschlossen)
+
 ### 2026-06-09
 - Komplett vereinfacht: alles raus außer Add, Delete und Check all
 - Nur noch HTTP-Status-Check (next chapter URL = 200? → raus)
