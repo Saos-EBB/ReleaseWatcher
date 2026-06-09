@@ -12,6 +12,11 @@ if (!fs.existsSync(MODS)) { console.log('Installing...'); execSync('npm install'
 
 const fetch = require('node-fetch');
 const rl    = require('readline');
+const { exec } = require('child_process');
+
+function openUrl(url) {
+    exec(`start "" "${url}"`);
+}
 
 const R = '\x1b[0m', B = '\x1b[1m', G = '\x1b[32m', RE = '\x1b[31m', C = '\x1b[36m', Y = '\x1b[33m';
 
@@ -40,6 +45,7 @@ async function checkAll(list) {
                 m.chapter += 1;
                 m.url = next;
                 updated = true;
+                openUrl(next);
             } else {
                 console.log(C + `  · ${m.name}: not yet  (checked chapter ${m.chapter + 1}, got ${res.status})` + R);
             }
