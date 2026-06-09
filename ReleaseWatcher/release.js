@@ -34,7 +34,7 @@ async function checkAll(list) {
         if (!next) { console.log(RE + `  ✗ ${m.name}: can't build next URL` + R); continue; }
         try {
             const res = await fetch(next, { timeout: 10000 });
-            if (res.status === 200) {
+            if (res.status === 200 && res.url === next) {
                 console.log(G + B + `  ✓ ${m.name}: Chapter ${m.chapter + 1} is OUT!` + R);
                 console.log(C + `    → ${next}` + R);
                 m.chapter += 1;
