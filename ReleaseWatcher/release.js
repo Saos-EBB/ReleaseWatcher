@@ -64,7 +64,7 @@ async function main() {
         } else {
             console.log(C + '  (no manga saved)' + R);
         }
-        console.log(Y + '\n  [a] Add  [d] Delete  [c] Check all  [q] Quit\n' + R);
+        console.log(Y + '\n  [a] Add  [d] Delete  [n] Update chapter  [c] Check all  [q] Quit\n' + R);
 
         const cmd = (await ask(Y + '> ' + R)).toLowerCase();
 
@@ -91,6 +91,23 @@ async function main() {
             const [removed] = list.splice(idx, 1);
             save(list);
             console.log(G + `Deleted "${removed.name}".` + R);
+        }
+
+        if (cmd === 'n') {
+            if (!list.length) { console.log(RE + 'Nothing to update.' + R); continue; }
+            const rawIdx = await ask('Number to update: ');
+            const idx = parseInt(rawIdx, 10) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= list.length) { console.log(RE + 'Invalid number.' + R); continue; }
+            const m = list[idx];
+            const rawChapter = await ask(`New chapter number for "${m.name}" (current: ${m.chapter}): `);
+            const chapter = parseInt(rawChapter, 10);
+            if (isNaN(chapter)) { console.log(RE + 'Not a valid number.' + R); continue; }
+            const s = String(m.chapter);
+            const i = m.url.lastIndexOf(s);
+            if (i !== -1) m.url = m.url.slice(0, i) + String(chapter) + m.url.slice(i + s.length);
+            m.chapter = chapter;
+            save(list);
+            console.log(G + `Updated "${m.name}" to chapter ${chapter}.` + R);
         }
 
         if (cmd === 'c') {
