@@ -1,5 +1,5 @@
 # ReleaseWatcher
-
+!!!! Broken , i fix it when i find some free time !!!!!!!
 A minimal Node.js CLI that checks TCB Scans and MangaFire for new manga chapters.
 
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green) ![Status](https://img.shields.io/badge/Status-Running-brightgreen) ![Type](https://img.shields.io/badge/Type-CLI%20Tool-purple)
