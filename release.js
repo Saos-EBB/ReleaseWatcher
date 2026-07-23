@@ -3,6 +3,7 @@ const fs   = require('fs');
 const path = require('path');
 const rl   = require('readline');
 const { exec } = require('child_process');
+const puppeteer = require('puppeteer');
 
 const DATA = path.join(__dirname, 'mangas.json');
 
@@ -51,31 +52,34 @@ async function checkTCB(m) {
 
 // MangaFire chapter URLs use opaque numeric IDs (/chapter/6927219), not the chapter
 // number, so the next chapter's URL can't be guessed by incrementing anymore. The site
-// is also a client-rendered SPA — fetching the page HTML returns an empty shell — so
-// instead call the same JSON API the frontend uses to load the chapter list.
-// URL slug is "{hid}-{name}", e.g. /title/pmykj-animan → hid "pmykj".
-function mangaFireHid(chapterUrl) {
-    const m = chapterUrl.match(/\/title\/([^/-]+)/);
-    return m ? m[1] : null;
-}
-
+// is also a client-rendered SPA behind a Cloudflare JS challenge — a plain fetch to its
+// chapter-list API now gets rejected with 403 "Missing token". A real browser passes
+// the challenge as a side effect of loading the page, so drive one with Puppeteer and
+// capture the same JSON response the page's own JS receives.
 function mangaFireTitleUrl(chapterUrl) {
     return chapterUrl.replace(/\/chapter\/\d+.*$/, '');
 }
 
 async function checkMangaFire(m, nextNum) {
-    const hid = mangaFireHid(m.url);
-    if (!hid) return null;
-    const res = await fetch(`https://mangafire.to/api/titles/${hid}/chapters`, {
-        signal: AbortSignal.timeout(10000),
-        headers: { ...UA, Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    });
-    if (res.status !== 200) return null;
-    const { items } = await res.json();
-    const matches = (items || []).filter(c => c.language === 'en' && c.number === nextNum);
-    if (!matches.length) return null;
-    const chapter = matches.find(c => c.type === 'official') ?? matches[0];
-    return { url: `${mangaFireTitleUrl(m.url)}/chapter/${chapter.id}`, chapter: chapter.number };
+    const browser = await puppeteer.launch({ headless: true });
+    try {
+        const page = await browser.newPage();
+        await page.setUserAgent(UA['User-Agent']);
+        const responsePromise = page.waitForResponse(
+            (res) => /\/api\/titles\/[^/]+\/chapters/.test(res.url()),
+            { timeout: 20000 }
+        );
+        await page.goto(mangaFireTitleUrl(m.url), { waitUntil: 'domcontentloaded', timeout: 20000 });
+        const res = await responsePromise;
+        if (res.status() !== 200) return null;
+        const { items } = await res.json();
+        const matches = (items || []).filter(c => c.language === 'en' && c.number === nextNum);
+        if (!matches.length) return null;
+        const chapter = matches.find(c => c.type === 'official') ?? matches[0];
+        return { url: `${mangaFireTitleUrl(m.url)}/chapter/${chapter.id}`, chapter: chapter.number };
+    } finally {
+        await browser.close();
+    }
 }
 
 // ponytail: real seam — two adapters exist today, justified

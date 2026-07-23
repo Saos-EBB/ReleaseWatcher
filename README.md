@@ -9,11 +9,11 @@ A minimal Node.js CLI that checks manga sites (TCB Scans, MangaFire) for new cha
 
 ## How It Works
 
-Stores the current chapter URL and site for each manga. On check, it replaces the chapter number in the URL with `+1` and uses a site-specific method to verify the chapter is actually available.
+Stores the current chapter URL and site for each manga. On check, it looks up the next chapter number using a site-specific method and reports what it finds.
 
 **TCB:** Homepage-based check — chapter IDs get reassigned to later chapters over time, so the saved URL can go stale. Reads the site's homepage (which always lists each series' true latest chapter) and matches by URL slug instead.
 
-**MangaFire:** API-based check — chapter URLs use opaque numeric IDs (`/chapter/6927219`), not the chapter number, so the next URL can't be guessed by incrementing. The site is also a client-rendered SPA, so fetching the page HTML returns an empty shell. Instead the check calls MangaFire's own JSON API (`/api/titles/{hid}/chapters`) to get the real chapter list and matches by chapter number.
+**MangaFire:** Browser-based check — chapter URLs use opaque numeric IDs (`/chapter/6927219`), not the chapter number, so the next URL can't be guessed by incrementing. The site is also a client-rendered SPA behind a Cloudflare JS challenge, so a plain HTTP request to its chapter-list API gets rejected. Instead a headless Puppeteer browser loads the title page and captures the same JSON response the page's own JS receives, then matches by chapter number.
 
 ---
 
@@ -22,6 +22,7 @@ Stores the current chapter URL and site for each manga. On check, it replaces th
 **Requirements:** Node.js 18+ — [nodejs.org](https://nodejs.org)
 
 ```bash
+npm install
 node release.js
 ```
 
@@ -71,6 +72,10 @@ Kevin Schaberl — SAOS
 ---
 
 ## Changelog
+
+### 2026-07-23 (2)
+- MangaFire moved its chapter-list API behind a Cloudflare JS challenge, breaking yesterday's fetch-based fix within a day (`403 Missing token`). The check now drives a headless Puppeteer browser to load the title page and capture the same API response the page's own JS gets, since the challenge only passes for a real browser
+- Adds `puppeteer` as a dependency; run `npm install` before `node release.js`
 
 ### 2026-07-23
 - Fixed TCB check: chapter IDs get reassigned to later chapters over time (saved id 7995 silently moved from chapter 1186 to 1188), so chasing a "Next" link off the saved page could get permanently stuck once that page became the latest chapter with no "Next". Now reads the homepage's live listing instead, which can catch up more than one chapter at once
