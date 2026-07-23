@@ -1,0 +1,4 @@
+## 2026-07-23 — TCB-Check meldete dauerhaft "not yet", obwohl 2 Kapitel neu draußen waren
+**Symptom:** `c` (Check) meldete für OnePiece immer wieder "not yet", trotz mehrfachem Neustart des Tools über Tage hinweg.
+**Ursache:** checkTCB fetchte die gespeicherte Chapter-URL und suchte darauf einen "Next"-Link. Die Chapter-ID in der gespeicherten URL (7995) wurde von TCB zwischenzeitlich auf eine spätere Chapter umgebogen (1186 → 1188). Die gefetchte Seite war dadurch bereits die neueste Chapter und hatte nur noch "Prev", kein "Next" mehr — die Regex fand nie etwas, der Check blieb für immer bei "not yet" hängen, unabhängig davon wie oft man es erneut versucht.
+**Fix:** checkTCB liest jetzt die Homepage (listet je Serie die echte aktuelle Chapter) statt der potenziell veralteten gespeicherten Seite zu vertrauen.

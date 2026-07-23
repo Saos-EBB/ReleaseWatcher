@@ -31,20 +31,22 @@ function buildNextUrl(url, from, to) {
 
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' };
 
-// TCB: chapter URLs are /chapters/{id}/...-chapter-{num}, but {id} isn't
-// derivable from {num} (ids get skipped, e.g. 7989 -> 1187 lands on id 7991,
-// not 7990), so guessing the next URL by incrementing num while reusing the
-// old id 404s/redirects back to the old chapter. Instead read the "Next"
-// nav link off the current chapter's page, which the site keeps accurate.
-async function checkTCB(m, nextNum) {
-    const res = await fetch(m.url, { signal: AbortSignal.timeout(10000), headers: UA });
+// TCB: chapter URLs are /chapters/{id}/...-chapter-{num}, but the site
+// reassigns {id} to later chapters over time (e.g. id 7995 pointed at chapter
+// 1186, now points at 1188), so both guessing the next URL and reading "Next"
+// off the saved page can end up chasing a stale reference. The homepage
+// always lists each series' true latest chapter, so read that directly.
+async function checkTCB(m) {
+    const slugMatch = m.url.match(/\/chapters\/\d+\/(.+)-chapter-\d+/i);
+    if (!slugMatch) return null;
+    const res = await fetch('https://tcbonepiecechapters.com/', { signal: AbortSignal.timeout(10000), headers: UA });
     if (res.status !== 200) return null;
     const html = await res.text();
-    const next = html.match(/<a\s+href="([^"]+)"[^>]*>\s*Next\s*<\/a>/i);
-    if (!next) return null;
-    const url = new URL(next[1], res.url).href;
-    const match = url.match(/chapter-(\d+)/i);
-    return (match && parseInt(match[1]) === nextNum) ? url : null;
+    const re = new RegExp(`href="(/chapters/\\d+/${slugMatch[1]}-chapter-(\\d+))"`, 'i');
+    const match = html.match(re);
+    if (!match) return null;
+    const chapter = parseInt(match[2], 10);
+    return chapter > m.chapter ? { url: new URL(match[1], res.url).href, chapter } : null;
 }
 
 // MangaFire chapter URLs use opaque numeric IDs (/chapter/6927219), not the chapter
@@ -73,7 +75,7 @@ async function checkMangaFire(m, nextNum) {
     const matches = (items || []).filter(c => c.language === 'en' && c.number === nextNum);
     if (!matches.length) return null;
     const chapter = matches.find(c => c.type === 'official') ?? matches[0];
-    return `${mangaFireTitleUrl(m.url)}/chapter/${chapter.id}`;
+    return { url: `${mangaFireTitleUrl(m.url)}/chapter/${chapter.id}`, chapter: chapter.number };
 }
 
 // ponytail: real seam — two adapters exist today, justified
@@ -88,13 +90,13 @@ async function checkAll(list) {
         if (!checker) { console.log(RE + `  ✗ ${m.name}: unknown site '${m.site}'` + R); continue; }
         const nextNum = m.chapter + 1;
         try {
-            const url = await checker(m, nextNum);
-            if (url) {
-                console.log(G + B + `  ✓ ${m.name}: Chapter ${nextNum} is OUT!` + R);
-                console.log(C + `    → ${url}` + R);
-                found.push({ manga: m, url });
+            const result = await checker(m, nextNum);
+            if (result) {
+                console.log(G + B + `  ✓ ${m.name}: Chapter ${result.chapter} is OUT!` + R);
+                console.log(C + `    → ${result.url}` + R);
+                found.push({ manga: m, url: result.url, chapter: result.chapter });
             } else {
-                console.log(C + `  · ${m.name}: not yet  (checked chapter ${nextNum})` + R);
+                console.log(C + `  · ${m.name}: not yet  (currently at chapter ${m.chapter})` + R);
             }
         } catch (e) {
             console.log(RE + `  ✗ ${m.name}: ${e.message}` + R);
@@ -151,8 +153,8 @@ async function cmdUpdate(list) {
 
 async function cmdCheck(list) {
     const found = await checkAll(list);
-    for (const { manga, url } of found) {
-        manga.chapter += 1;
+    for (const { manga, url, chapter } of found) {
+        manga.chapter = chapter;
         manga.url = url;
         openUrl(url);
     }

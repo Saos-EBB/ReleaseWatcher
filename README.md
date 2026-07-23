@@ -11,7 +11,7 @@ A minimal Node.js CLI that checks manga sites (TCB Scans, MangaFire) for new cha
 
 Stores the current chapter URL and site for each manga. On check, it replaces the chapter number in the URL with `+1` and uses a site-specific method to verify the chapter is actually available.
 
-**TCB:** URL-based check — looks for `chapter-N` anywhere in the final URL (TCB uses `-chapter-N` with a dash, not a slash).
+**TCB:** Homepage-based check — chapter IDs get reassigned to later chapters over time, so the saved URL can go stale. Reads the site's homepage (which always lists each series' true latest chapter) and matches by URL slug instead.
 
 **MangaFire:** API-based check — chapter URLs use opaque numeric IDs (`/chapter/6927219`), not the chapter number, so the next URL can't be guessed by incrementing. The site is also a client-rendered SPA, so fetching the page HTML returns an empty shell. Instead the check calls MangaFire's own JSON API (`/api/titles/{hid}/chapters`) to get the real chapter list and matches by chapter number.
 
@@ -71,6 +71,10 @@ Kevin Schaberl — SAOS
 ---
 
 ## Changelog
+
+### 2026-07-23
+- Fixed TCB check: chapter IDs get reassigned to later chapters over time (saved id 7995 silently moved from chapter 1186 to 1188), so chasing a "Next" link off the saved page could get permanently stuck once that page became the latest chapter with no "Next". Now reads the homepage's live listing instead, which can catch up more than one chapter at once
+- Check results now carry the actual chapter number found instead of assuming `+1`, so a checker can report catching up multiple chapters at a time
 
 ### 2026-07-22
 - Fixed MangaFire check: site switched chapter URLs to opaque numeric IDs (`/chapter/6927219`) and moved to a client-rendered SPA (page HTML no longer contains chapter data), breaking both the increment-based next-URL guess and the old body-title check
