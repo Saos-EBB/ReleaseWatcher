@@ -22,14 +22,6 @@ function siteLabel(site) {
     return '[?]  ';
 }
 
-// ponytail: from→to makes this reusable for check (+1) and manual update (arbitrary)
-function buildNextUrl(url, from, to) {
-    const s = String(from);
-    const i = url.lastIndexOf(s);
-    if (i === -1) return null;
-    return url.slice(0, i) + String(to) + url.slice(i + s.length);
-}
-
 const UA = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36' };
 
 // TCB: chapter URLs are /chapters/{id}/...-chapter-{num}, but the site
@@ -149,7 +141,6 @@ async function cmdUpdate(list) {
     const rawChapter = await ask(`New chapter number for "${m.name}" (current: ${m.chapter}): `);
     const chapter = parseInt(rawChapter, 10);
     if (isNaN(chapter)) { console.log(RE + 'Not a valid number.' + R); return; }
-    m.url = buildNextUrl(m.url, m.chapter, chapter) ?? m.url;
     m.chapter = chapter;
     save(list);
     console.log(G + `Updated "${m.name}" to chapter ${chapter}.` + R);

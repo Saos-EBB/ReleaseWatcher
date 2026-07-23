@@ -33,7 +33,7 @@ node release.js
 ```
 [a] Add    – enter name, site (TCB / MangaFire), chapter URL, chapter number
 [d] Delete – remove a manga by index
-[n] Update – set a new chapter number (and updates the URL) by index
+[n] Update – set a new chapter number by index (URL is left as-is until the next check finds the real one)
 [c] Check  – fetch next chapter for all manga, report what's out
 [q] Quit
 ```
@@ -72,6 +72,9 @@ Kevin Schaberl — SAOS
 ---
 
 ## Changelog
+
+### 2026-07-23 (3)
+- Fixed `[n] Update`: it used to rebuild the chapter URL by swapping the chapter number in place, keeping the old chapter ID — harmless for MangaFire (whose IDs aren't derived from the URL anyway) but produced a broken link for TCB, since TCB IDs aren't derivable from the chapter number (the whole reason the TCB check no longer trusts the saved URL either). Manual update now only changes the chapter number; the URL is left alone until the next real check finds the correct one
 
 ### 2026-07-23 (2)
 - MangaFire moved its chapter-list API behind a Cloudflare JS challenge, breaking yesterday's fetch-based fix within a day (`403 Missing token`). The check now drives a headless Puppeteer browser to load the title page and capture the same API response the page's own JS gets, since the challenge only passes for a real browser
