@@ -1,4 +1,5 @@
 import type { Source, SourceName } from "../core/types";
+import { tmdbSource } from "./tmdb";
 
 const registry = new Map<SourceName, Source>();
 
@@ -11,3 +12,5 @@ export function getSource(name: SourceName): Source {
   if (!source) throw new Error(`Unknown source: ${name}`);
   return source;
 }
+
+registerSource(tmdbSource);

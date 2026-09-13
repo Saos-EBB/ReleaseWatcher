@@ -1,5 +1,14 @@
 # Entscheidungen
 
+## 2026-09-13 — TMDB: tv/movie-Unterscheidung in getReleases
+`SourceRef` trägt kein `type`-Feld, die TMDB-ID-Räume für TV und Movie
+überschneiden sich aber. `getReleases` probiert deshalb erst `GET /tv/{id}`;
+schlägt das fehl (404), wird `{id}` als Movie behandelt. Für Movies liefert
+`getReleases` genau eine Pseudo-Release (season: null, number: 1,
+air_date: release_date) statt echter Episoden — ein Film hat keine Staffeln.
+Provider-Name → `provider`-Feld: `"Netflix"` → `"netflix_de"` (lowercase,
+Leerzeichen zu `_`, Suffix `_de`), wie im Spec-Beispiel.
+
 ## 2026-09-13 — Default-Status & Progress-Constraint
 `addTitle` setzt neue Titel auf Status `plan` (Spec nennt keinen Default).
 `progress.title_id` ist `UNIQUE` — ein Titel hat maximal einen Progress-Eintrag,
