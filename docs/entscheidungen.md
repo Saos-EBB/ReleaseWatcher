@@ -1,5 +1,17 @@
 # Entscheidungen
 
+## 2026-09-13 — CLI-Kommandos & interaktive Auswahl
+`add <query>` sucht immer über die TMDB-Quelle (einzige registrierte Quelle in
+Phase 1; `--source` kommt erst in P2.4). Auswahl aus den Suchtreffern läuft
+über Bun's globales `prompt()` (blockierendes Stdin-Readline), kein eigener
+Readline-Wrapper. `list` zeigt nur die Watchlist (status watching/plan), wie
+im Datenmodell definiert — Titel mit `done`/`dropped` sind über `list` nicht
+mehr sichtbar, aber per bekannter `id` weiterhin über `status`/`rm` erreichbar.
+`check-new` dedupliziert über `saveReleaseIfNew` (manueller Existenz-Check mit
+`IS` statt der UNIQUE-Constraint direkt, da SQLite mehrere `NULL`-Season-Werte
+sonst als "verschieden" behandelt — hätte bei Filmen sonst bei jedem Lauf
+Duplikate erzeugt).
+
 ## 2026-09-13 — TMDB: tv/movie-Unterscheidung in getReleases
 `SourceRef` trägt kein `type`-Feld, die TMDB-ID-Räume für TV und Movie
 überschneiden sich aber. `getReleases` probiert deshalb erst `GET /tv/{id}`;
