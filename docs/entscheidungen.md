@@ -1,5 +1,11 @@
 # Entscheidungen
 
+## 2026-09-13 — Default-Status & Progress-Constraint
+`addTitle` setzt neue Titel auf Status `plan` (Spec nennt keinen Default).
+`progress.title_id` ist `UNIQUE` — ein Titel hat maximal einen Progress-Eintrag,
+`setProgress` wird das per Upsert nutzen (Spec sagt das nicht explizit, ergibt
+sich aber aus "progress <id> <number> — manuell setzen").
+
 ## 2026-09-13 — Projekt ersetzt statt koexistiert
 Bestehendes `release.js` (Node.js/Puppeteer, TCB/MangaFire-Scraping) wurde entfernt
 statt in einen Unterordner verschoben. Neuer Media-Tracker ist das alleinige
