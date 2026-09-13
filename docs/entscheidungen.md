@@ -1,5 +1,19 @@
 # Entscheidungen
 
+## 2026-09-13 — TVDB: Token-Cache & Pagination
+Der Bearer-Token wird nur In-Memory pro Prozesslauf gecacht (Modul-Variable),
+nicht auf Disk — ein CLI-Aufruf ist kurzlebig genug, dass ein erneuter Login
+beim nächsten Aufruf keine Rolle spielt (TVDB-Tokens sind eh einen Monat
+gültig). `getReleases` liest nur `page=0` der Episoden — keine
+Pagination-Schleife über weitere Seiten, da die Swagger-Spec kein
+`links.next`-Feld für diesen Endpoint dokumentiert und die Default-Page-Size
+für die meisten Serien reicht. `external_id` speichert `tvdb_id` aus dem
+Suchergebnis (nicht das mit Typ-Präfix versehene `id`-Feld), weil
+`/series/{id}/episodes/...` die reine numerische ID erwartet. Ohne
+`TVDB_API_KEY` in dieser Umgebung nur Modul-/Fehlerpfad-Check, kein Live-Call
+(analog TMDB) — TVDB-Endpunkte gegen die swagger.yml im v4-api-Repo geprüft,
+nicht gegen die (JS-gerenderte) Swagger-UI-Seite.
+
 ## 2026-09-13 — MangaDex: fixer Delay pro Request
 Nach jedem MangaDex-Call wartet der Adapter 250ms (`RATE_LIMIT_DELAY_MS`), wie
 im Spec-Punkt "Rate-Limit → kleiner Delay" gefordert. Das verzögert auch einen

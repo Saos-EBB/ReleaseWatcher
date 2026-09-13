@@ -2,6 +2,7 @@ import type { Source, SourceName } from "../core/types";
 import { anilistSource } from "./anilist";
 import { mangadexSource } from "./mangadex";
 import { tmdbSource } from "./tmdb";
+import { tvdbSource } from "./tvdb";
 
 const registry = new Map<SourceName, Source>();
 
@@ -18,3 +19,4 @@ export function getSource(name: SourceName): Source {
 registerSource(tmdbSource);
 registerSource(anilistSource);
 registerSource(mangadexSource);
+registerSource(tvdbSource);
