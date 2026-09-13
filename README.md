@@ -28,6 +28,7 @@ bun src/cli/index.ts add [--source <tmdb|anilist|mangadex|tvdb>] <query>
 bun src/cli/index.ts list                 # Watchlist anzeigen (status watching/plan)
 bun src/cli/index.ts check-new            # neue Releases der Watchlist prüfen und speichern
 bun src/cli/index.ts status <id> <status> # watching | plan | done | dropped
+bun src/cli/index.ts progress <id> <number> # Fortschritt manuell setzen (z.B. letztes gesehenes Kapitel/Episode)
 bun src/cli/index.ts rm <id>              # Titel entfernen
 bun src/cli/index.ts --help
 ```
