@@ -1,4 +1,5 @@
 import type { Source, SourceName } from "../core/types";
+import { anilistSource } from "./anilist";
 import { tmdbSource } from "./tmdb";
 
 const registry = new Map<SourceName, Source>();
@@ -14,3 +15,4 @@ export function getSource(name: SourceName): Source {
 }
 
 registerSource(tmdbSource);
+registerSource(anilistSource);

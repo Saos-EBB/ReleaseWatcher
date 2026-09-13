@@ -1,5 +1,17 @@
 # Entscheidungen
 
+## 2026-09-13 — AniList: Top-Match-Suche & Manga ohne Releases
+`Media(search:$q, type:$type)` (aus dem Spec-Snippet) liefert pro Aufruf nur
+den einen besten Treffer, keine Trefferliste — anders als TMDB/MangaDex.
+`search()` ruft die Query für ANIME und MANGA parallel auf und liefert bis zu
+zwei Ergebnisse (nicht zehn wie bei TMDB). Ein Miss liefert HTTP 404 mit
+gültigem `{"data":{"Media":null}}`-Body (live gegen die echte API geprüft) —
+kein Fehler, sondern "kein Treffer" für den jeweiligen Typ.
+`getReleases` nutzt `airingSchedule(notYetAired: false)`, damit nur bereits
+ausgestrahlte Folgen als Release zählen. Für Manga-Refs liefert AniList dafür
+naturgemäß eine leere `airingSchedule` (keine Sonderfall-Behandlung im Code
+nötig) — echte Kapitel-Termine kommen über MangaDex (P2.2).
+
 ## 2026-09-13 — CLI-Kommandos & interaktive Auswahl
 `add <query>` sucht immer über die TMDB-Quelle (einzige registrierte Quelle in
 Phase 1; `--source` kommt erst in P2.4). Auswahl aus den Suchtreffern läuft
