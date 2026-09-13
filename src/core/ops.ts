@@ -1,16 +1,6 @@
 import { db } from "./db";
 import { many, one, run } from "./queries";
-
-export type TitleType = "series" | "movie" | "anime" | "manga";
-export type TitleStatus = "watching" | "plan" | "done" | "dropped";
-
-export interface Title {
-  id: number;
-  name: string;
-  type: TitleType;
-  status: TitleStatus;
-  added_at: string;
-}
+import type { Title, TitleStatus, TitleType } from "./types";
 
 export function addTitle(name: string, type: TitleType): Title {
   run(
