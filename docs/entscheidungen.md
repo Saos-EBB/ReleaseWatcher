@@ -1,5 +1,13 @@
 # Entscheidungen
 
+## 2026-09-14 — `add --source` als führendes optionales Flag
+`--source <name>` muss (falls gesetzt) vor dem Query stehen — kein
+Parsing von Flags irgendwo im Argument-Array, da der Query selbst beliebige
+Wörter enthalten kann und ein generischer Flag-Parser dafür Overkill wäre.
+`check-new` brauchte keine Änderung: es ruft ohnehin generisch
+`getSource(ref.source)` pro `source_ref` auf, das war seit P1.5 schon
+quellen-agnostisch.
+
 ## 2026-09-13 — TVDB: Token-Cache & Pagination
 Der Bearer-Token wird nur In-Memory pro Prozesslauf gecacht (Modul-Variable),
 nicht auf Disk — ein CLI-Aufruf ist kurzlebig genug, dass ein erneuter Login

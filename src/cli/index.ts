@@ -7,7 +7,8 @@ import { statusCommand } from "./commands/status";
 const HELP = `release-watcher
 
 Usage:
-  add <query>              Titel suchen und zur Watchlist hinzufügen
+  add [--source <tmdb|anilist|mangadex|tvdb>] <query>
+                           Titel suchen (default tmdb) und zur Watchlist hinzufügen
   list                     Watchlist anzeigen
   check-new                Neue Releases für die Watchlist prüfen
   status <id> <status>     Status setzen (watching|plan|done|dropped)
