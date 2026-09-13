@@ -9,6 +9,13 @@ export interface Title {
   added_at: string;
 }
 
+export interface Progress {
+  id: number;
+  title_id: number;
+  last_number: number;
+  updated_at: string;
+}
+
 export type SourceName = "tmdb" | "anilist" | "mangadex" | "tvdb";
 
 export interface SourceRef {

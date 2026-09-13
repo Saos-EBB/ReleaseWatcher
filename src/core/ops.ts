@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { many, one, run } from "./queries";
-import type { Release, SourceName, SourceRef, Title, TitleStatus, TitleType } from "./types";
+import type { Progress, Release, SourceName, SourceRef, Title, TitleStatus, TitleType } from "./types";
 
 export function addTitle(name: string, type: TitleType): Title {
   run(
@@ -78,4 +78,19 @@ export function saveReleaseIfNew(titleId: number, source: SourceName, release: R
     },
   );
   return true;
+}
+
+export function setProgress(titleId: number, lastNumber: number): void {
+  run(
+    db,
+    `INSERT INTO progress (title_id, last_number, updated_at) VALUES ($title_id, $last_number, $updated_at)
+     ON CONFLICT (title_id) DO UPDATE SET last_number = excluded.last_number, updated_at = excluded.updated_at`,
+    { $title_id: titleId, $last_number: lastNumber, $updated_at: new Date().toISOString() },
+  );
+}
+
+export function getProgress(titleId: number): Progress | null {
+  return one<Progress>(db, `SELECT * FROM progress WHERE title_id = $title_id`, {
+    $title_id: titleId,
+  });
 }

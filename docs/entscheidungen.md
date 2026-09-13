@@ -1,5 +1,12 @@
 # Entscheidungen
 
+## 2026-09-14 — Progress als Upsert
+`setProgress` nutzt SQLite `ON CONFLICT (title_id) DO UPDATE` gegen die
+`UNIQUE`-Constraint auf `progress.title_id` (siehe P1.2) — ein Titel hat
+immer höchstens einen Progress-Datensatz, erneutes Setzen überschreibt statt
+einen zweiten Eintrag zu erzeugen. `list` zeigt Progress nur an, wenn einer
+existiert (keine Anzeige von "progress: -" für Titel ohne Fortschritt).
+
 ## 2026-09-14 — `add --source` als führendes optionales Flag
 `--source <name>` muss (falls gesetzt) vor dem Query stehen — kein
 Parsing von Flags irgendwo im Argument-Array, da der Query selbst beliebige

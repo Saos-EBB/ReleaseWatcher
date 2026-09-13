@@ -1,4 +1,4 @@
-import { listWatchlist } from "../../core/ops";
+import { getProgress, listWatchlist } from "../../core/ops";
 
 export function listCommand(): void {
   const titles = listWatchlist();
@@ -7,6 +7,8 @@ export function listCommand(): void {
     return;
   }
   for (const title of titles) {
-    console.log(`[${title.id}] ${title.name} (${title.type}, ${title.status})`);
+    const progress = getProgress(title.id);
+    const progressLabel = progress ? `, progress: ${progress.last_number}` : "";
+    console.log(`[${title.id}] ${title.name} (${title.type}, ${title.status}${progressLabel})`);
   }
 }
