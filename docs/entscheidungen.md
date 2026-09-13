@@ -1,5 +1,13 @@
 # Entscheidungen
 
+## 2026-09-13 — MangaDex: fixer Delay pro Request
+Nach jedem MangaDex-Call wartet der Adapter 250ms (`RATE_LIMIT_DELAY_MS`), wie
+im Spec-Punkt "Rate-Limit → kleiner Delay" gefordert. Das verzögert auch einen
+einzelnen `search()`-Aufruf spürbar, ist aber für ein persönliches Tool ohne
+Zeitdruck vertretbar und verhindert Bursts bei `check-new` über mehrere
+Manga-Titel hinweg. Titelname kommt aus `attributes.title.en`, sonst dem
+ersten vorhandenen Sprachwert (MangaDex liefert nicht immer ein `en`-Title).
+
 ## 2026-09-13 — AniList: Top-Match-Suche & Manga ohne Releases
 `Media(search:$q, type:$type)` (aus dem Spec-Snippet) liefert pro Aufruf nur
 den einen besten Treffer, keine Trefferliste — anders als TMDB/MangaDex.
