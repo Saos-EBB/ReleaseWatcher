@@ -68,7 +68,7 @@ function renderSearchResults() {
       <div class="result-title">
         <span class="result-type">${result.type}</span>${result.name}
       </div>
-      <button onclick="addTitle(${idx})" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">+ Add</button>
+      <button type="button" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="window.addTitle(${idx})">+ Add</button>
     </div>
   `,
     )
@@ -236,11 +236,11 @@ function debounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: numbe
   }) as T;
 }
 
-// Make addTitle globally available
+// Make addTitle globally available for onclick handlers
 declare global {
-  function addTitle(idx: number): void;
+  var addTitle: (idx: number) => Promise<void>;
 }
-(window as unknown as Record<string, unknown>).addTitle = addTitle;
+globalThis.addTitle = addTitle;
 
 // Init
 async function init() {
