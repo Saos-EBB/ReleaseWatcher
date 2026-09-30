@@ -1,3 +1,5 @@
+// ── Types ──
+
 interface SearchResult {
   external_id: string;
   name: string;
@@ -5,7 +7,7 @@ interface SearchResult {
   url: string | null;
 }
 
-interface ReleaseWithTitle {
+interface ReleaseEntry {
   id: number;
   title_id: number;
   title_name: string;
@@ -17,75 +19,101 @@ interface ReleaseWithTitle {
   air_date: string | null;
   provider: string | null;
   url: string | null;
-  fetched_at: string;
 }
 
-let currentSearchResults: SearchResult[] = [];
-let currentMonth = new Date();
-let allReleases: ReleaseWithTitle[] = [];
+// ── State ──
 
-// DOM Elements
-const searchInput = document.getElementById("searchInput") as HTMLInputElement;
-const searchResults = document.getElementById("searchResults") as HTMLDivElement;
-const calendar = document.getElementById("calendar") as HTMLDivElement;
-const calendarMonth = document.getElementById("calendarMonth") as HTMLHeadingElement;
-const checkNewBtn = document.getElementById("checkNewBtn") as HTMLButtonElement;
-const prevMonthBtn = document.getElementById("prevMonth") as HTMLButtonElement;
-const nextMonthBtn = document.getElementById("nextMonth") as HTMLButtonElement;
-const titleCount = document.getElementById("titleCount") as HTMLSpanElement;
-const lastUpdate = document.getElementById("lastUpdate") as HTMLSpanElement;
+let searchResults: SearchResult[] = [];
+let viewDate = new Date(); // which month is shown
+let releases: ReleaseEntry[] = [];
 
-// Search
-searchInput.addEventListener("input", debounce(handleSearch, 300));
+// ── DOM ──
 
-async function handleSearch() {
-  const query = searchInput.value.trim();
-  if (query.length < 2) {
-    searchResults.classList.remove("visible");
+const $searchInput = document.getElementById("searchInput") as HTMLInputElement;
+const $searchResults = document.getElementById("searchResults") as HTMLDivElement;
+const $calendar = document.getElementById("calendar") as HTMLDivElement;
+const $monthLabel = document.getElementById("calendarMonth") as HTMLHeadingElement;
+const $checkNew = document.getElementById("checkNewBtn") as HTMLButtonElement;
+const $prev = document.getElementById("prevMonth") as HTMLButtonElement;
+const $next = document.getElementById("nextMonth") as HTMLButtonElement;
+const $titleCount = document.getElementById("titleCount") as HTMLSpanElement;
+const $lastUpdate = document.getElementById("lastUpdate") as HTMLSpanElement;
+const $toast = document.getElementById("toast") as HTMLDivElement;
+
+// ── Search ──
+
+let searchTimeout: ReturnType<typeof setTimeout>;
+
+$searchInput.addEventListener("input", () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(doSearch, 300);
+});
+
+// Close search results on click outside
+document.addEventListener("click", (e) => {
+  if (!(e.target as HTMLElement).closest(".search-section")) {
+    $searchResults.classList.remove("visible");
+  }
+});
+
+async function doSearch() {
+  const q = $searchInput.value.trim();
+  if (q.length < 2) {
+    $searchResults.classList.remove("visible");
     return;
   }
 
   try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&source=tmdb`);
-    const data = (await response.json()) as { results: SearchResult[] };
-    currentSearchResults = data.results || [];
-    renderSearchResults();
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&source=tmdb`);
+    const data = await res.json();
+
+    if (data.error) {
+      toast(data.error, true);
+      return;
+    }
+
+    searchResults = data.results || [];
+
+    if (searchResults.length === 0) {
+      $searchResults.innerHTML = `<div class="search-result-item"><span class="result-title" style="color:var(--text-muted)">Keine Treffer</span></div>`;
+      $searchResults.classList.add("visible");
+      return;
+    }
+
+    $searchResults.innerHTML = searchResults
+      .map(
+        (r, i) => `
+      <div class="search-result-item" data-idx="${i}">
+        <div class="result-title">
+          <span class="result-type">${r.type}</span>${escapeHtml(r.name)}
+        </div>
+        <button type="button" class="add-btn" data-idx="${i}">+ Add</button>
+      </div>`,
+      )
+      .join("");
+
+    // Event delegation for add buttons
+    $searchResults.querySelectorAll(".add-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = Number((btn as HTMLElement).dataset.idx);
+        doAddTitle(idx);
+      });
+    });
+
+    $searchResults.classList.add("visible");
   } catch (err) {
     console.error("Search error:", err);
+    toast("Suche fehlgeschlagen", true);
   }
 }
 
-function renderSearchResults() {
-  if (currentSearchResults.length === 0) {
-    searchResults.classList.remove("visible");
-    return;
-  }
-
-  searchResults.innerHTML = currentSearchResults
-    .map(
-      (result, idx) => `
-    <div class="search-result-item" data-index="${idx}">
-      <div class="result-title">
-        <span class="result-type">${result.type}</span>${result.name}
-      </div>
-      <button type="button" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="window.addTitle(${idx})">+ Add</button>
-    </div>
-  `,
-    )
-    .join("");
-
-  searchResults.classList.add("visible");
-}
-
-async function addTitle(idx: number) {
-  const result = currentSearchResults[idx];
+async function doAddTitle(idx: number) {
+  const result = searchResults[idx];
   if (!result) return;
 
-  checkNewBtn.disabled = true;
-  checkNewBtn.textContent = "Adding…";
-
   try {
-    const response = await fetch("/api/titles", {
+    const res = await fetch("/api/titles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -96,156 +124,191 @@ async function addTitle(idx: number) {
       }),
     });
 
-    if (response.ok) {
-      searchInput.value = "";
-      searchResults.classList.remove("visible");
-      currentSearchResults = [];
-      await loadReleases();
-      await updateTitleCount();
+    const data = await res.json();
+
+    if (!res.ok) {
+      toast(data.error || "Fehler beim Hinzufügen", true);
+      return;
     }
+
+    toast(`✓ ${result.name} hinzugefügt`);
+    $searchInput.value = "";
+    $searchResults.classList.remove("visible");
+    searchResults = [];
+    await loadReleases();
+    await loadTitleCount();
   } catch (err) {
-    console.error("Add title error:", err);
-    alert("Error adding title");
-  } finally {
-    checkNewBtn.disabled = false;
-    checkNewBtn.textContent = "↻ Check new";
+    console.error("Add error:", err);
+    toast("Fehler beim Hinzufügen", true);
   }
 }
 
-// Calendar
-function renderCalendar() {
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
+// ── Calendar ──
 
-  calendarMonth.textContent = new Intl.DateTimeFormat("de-DE", {
+function renderCalendar() {
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  $monthLabel.textContent = new Intl.DateTimeFormat("de-DE", {
     month: "long",
     year: "numeric",
-  }).format(currentMonth);
+  }).format(viewDate);
 
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDate = new Date(firstDay);
-  startDate.setDate(startDate.getDate() - firstDay.getDay());
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0);
 
-  calendar.innerHTML = "";
+  // Monday = 0, Sunday = 6 (ISO week)
+  const startDow = (firstOfMonth.getDay() + 6) % 7;
+
+  // Start from Monday of the week that contains the 1st
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(gridStart.getDate() - startDow);
+
+  $calendar.innerHTML = "";
 
   // Weekday headers
-  const weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-  for (const day of weekdays) {
-    const dayEl = document.createElement("div");
-    dayEl.className = "calendar-weekday";
-    dayEl.textContent = day;
-    calendar.appendChild(dayEl);
+  for (const label of ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]) {
+    const el = document.createElement("div");
+    el.className = "calendar-weekday";
+    el.textContent = label;
+    $calendar.appendChild(el);
   }
 
-  // Days
-  let current = new Date(startDate);
-  while (current <= lastDay || current.getDay() !== 1) {
-    const dayEl = document.createElement("div");
-    const dateStr = current.toISOString().split("T")[0];
-    const isOtherMonth = current.getMonth() !== month;
+  // Build a lookup: date string → releases[]
+  const byDate = new Map<string, ReleaseEntry[]>();
+  for (const r of releases) {
+    if (!r.air_date) continue;
+    const list = byDate.get(r.air_date) || [];
+    list.push(r);
+    byDate.set(r.air_date, list);
+  }
 
-    dayEl.className = `calendar-day${isOtherMonth ? " other-month" : ""}`;
+  // Render 6 weeks (42 cells)
+  const today = new Date().toISOString().split("T")[0];
+  const cursor = new Date(gridStart);
 
-    if (!isOtherMonth) {
-      dayEl.innerHTML = `<div class="calendar-day-number">${current.getDate()}</div>`;
+  for (let i = 0; i < 42; i++) {
+    const dateStr = toDateStr(cursor);
+    const inMonth = cursor.getMonth() === month;
 
-      // Add releases for this date
-      const dayReleases = allReleases.filter((r) => r.air_date === dateStr);
-      for (const release of dayReleases) {
+    const cell = document.createElement("div");
+    cell.className = `calendar-day${inMonth ? "" : " other-month"}${dateStr === today ? " today" : ""}`;
+
+    const num = document.createElement("div");
+    num.className = "calendar-day-number";
+    num.textContent = String(cursor.getDate());
+    cell.appendChild(num);
+
+    if (inMonth) {
+      const dayReleases = byDate.get(dateStr) || [];
+      for (const rel of dayReleases) {
         const chip = document.createElement("div");
-        chip.className = `release-chip ${release.type}`;
-        const seasonLabel = release.season != null ? `S${release.season}` : "";
-        chip.textContent = `${release.title_name} ${seasonLabel}E${release.number}`;
-        chip.title = release.name || "";
-        if (release.url) {
-          chip.style.cursor = "pointer";
-          chip.onclick = () => window.open(release.url, "_blank");
+        chip.className = `release-chip ${rel.type}`;
+        const s = rel.season != null ? `S${rel.season}` : "";
+        chip.textContent = `${rel.title_name} ${s}E${rel.number}`;
+        chip.title = [rel.name, rel.provider].filter(Boolean).join(" · ");
+        if (rel.url) {
+          chip.addEventListener("click", () => window.open(rel.url!, "_blank"));
         }
-        dayEl.appendChild(chip);
+        cell.appendChild(chip);
       }
-    } else {
-      dayEl.textContent = current.getDate().toString();
     }
 
-    calendar.appendChild(dayEl);
-    current.setDate(current.getDate() + 1);
+    $calendar.appendChild(cell);
+    cursor.setDate(cursor.getDate() + 1);
   }
 }
 
-prevMonthBtn.addEventListener("click", () => {
-  currentMonth.setMonth(currentMonth.getMonth() - 1);
-  renderCalendar();
+$prev.addEventListener("click", () => {
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
+  loadReleases(); // reload for new month range
 });
 
-nextMonthBtn.addEventListener("click", () => {
-  currentMonth.setMonth(currentMonth.getMonth() + 1);
-  renderCalendar();
+$next.addEventListener("click", () => {
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
+  loadReleases();
 });
 
-// Check new
-checkNewBtn.addEventListener("click", async () => {
-  checkNewBtn.disabled = true;
-  checkNewBtn.innerHTML = '<span class="loading"></span>';
+// ── Check new ──
+
+$checkNew.addEventListener("click", async () => {
+  $checkNew.disabled = true;
+  $checkNew.innerHTML = '<span class="loading"></span> Prüfe…';
 
   try {
-    await fetch("/api/check-new", { method: "POST" });
+    const res = await fetch("/api/check-new", { method: "POST" });
+    const data = await res.json();
+
+    if (data.error) {
+      toast(data.error, true);
+      return;
+    }
+
+    const count = data.count || 0;
+    toast(count > 0 ? `${count} neue Release(s) gefunden` : "Keine neuen Releases");
     await loadReleases();
   } catch (err) {
     console.error("Check new error:", err);
-    alert("Error checking for new releases");
+    toast("Check new fehlgeschlagen", true);
   } finally {
-    checkNewBtn.disabled = false;
-    checkNewBtn.textContent = "↻ Check new";
+    $checkNew.disabled = false;
+    $checkNew.textContent = "↻ Check new";
   }
 });
 
-// Load releases
+// ── Data loading ──
+
 async function loadReleases() {
   try {
-    // Get current month range
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const from = new Date(year, month, 1).toISOString().split("T")[0];
-    const to = new Date(year, month + 1, 0).toISOString().split("T")[0];
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const from = toDateStr(new Date(year, month, 1));
+    const to = toDateStr(new Date(year, month + 1, 0));
 
-    const response = await fetch(`/api/releases?from=${from}&to=${to}`);
-    const data = (await response.json()) as { releases: ReleaseWithTitle[] };
-    allReleases = data.releases || [];
+    const res = await fetch(`/api/releases?from=${from}&to=${to}`);
+    const data = await res.json();
+    releases = data.releases || [];
     renderCalendar();
   } catch (err) {
     console.error("Load releases error:", err);
   }
 }
 
-async function updateTitleCount() {
-  // For now, just show 0 (would need a /api/titles endpoint)
-  titleCount.textContent = "~";
+async function loadTitleCount() {
+  try {
+    const res = await fetch("/api/titles");
+    const data = await res.json();
+    $titleCount.textContent = String(data.total || 0);
+  } catch {
+    $titleCount.textContent = "?";
+  }
 }
 
-function updateLastUpdate() {
-  lastUpdate.textContent = new Date().toLocaleDateString("de-DE");
+// ── Helpers ──
+
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
-// Utility
-function debounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: number): T {
-  let timeout: ReturnType<typeof setTimeout>;
-  return ((...args) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn(...args), delay);
-  }) as T;
+function escapeHtml(s: string): string {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
 }
 
-// Make addTitle globally available for onclick handlers
-declare global {
-  var addTitle: (idx: number) => Promise<void>;
-}
-globalThis.addTitle = addTitle;
-
-// Init
-async function init() {
-  await loadReleases();
-  updateLastUpdate();
+function toast(msg: string, isError = false) {
+  $toast.textContent = msg;
+  $toast.className = `toast visible${isError ? " error" : ""}`;
+  setTimeout(() => {
+    $toast.className = "toast";
+  }, 3000);
 }
 
-init();
+// ── Init ──
+
+loadTitleCount();
+loadReleases();
+$lastUpdate.textContent = new Date().toLocaleDateString("de-DE");

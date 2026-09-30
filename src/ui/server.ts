@@ -1,36 +1,22 @@
 import { getSource } from "../sources/index";
-import { checkNew, listReleasesBetween, addTitle, addSourceRef, getTitle } from "../core/ops";
-import type { SearchResult, TitleType } from "../core/types";
+import {
+  checkNew,
+  listReleasesBetween,
+  addTitle,
+  addSourceRef,
+  listTitles,
+  listWatchlist,
+} from "../core/ops";
+import type { TitleType } from "../core/types";
 import indexHtml from "./index.html";
-
-interface SearchQuery {
-  q: string;
-  source?: string;
-}
-
-interface AddTitleRequest {
-  name: string;
-  type: TitleType;
-  source: string;
-  external_id: string;
-}
-
-interface ReleasesQuery {
-  from?: string;
-  to?: string;
-}
 
 Bun.serve({
   port: 3000,
+  routes: {
+    "/": indexHtml,
+  },
   async fetch(req) {
     const url = new URL(req.url);
-
-    // Serve HTML
-    if (url.pathname === "/") {
-      return new Response(indexHtml, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
-    }
 
     // API: Search
     if (url.pathname === "/api/search" && req.method === "GET") {
@@ -56,7 +42,12 @@ Bun.serve({
     // API: Add Title
     if (url.pathname === "/api/titles" && req.method === "POST") {
       try {
-        const body = (await req.json()) as AddTitleRequest;
+        const body = (await req.json()) as {
+          name: string;
+          type: TitleType;
+          source: string;
+          external_id: string;
+        };
         const title = addTitle(body.name, body.type);
         addSourceRef(title.id, body.source as any, body.external_id);
 
@@ -72,12 +63,27 @@ Bun.serve({
       }
     }
 
+    // API: List Titles (for count + watchlist)
+    if (url.pathname === "/api/titles" && req.method === "GET") {
+      try {
+        const all = listTitles();
+        const watchlist = listWatchlist();
+        return Response.json({ total: all.length, watching: watchlist.length, titles: all });
+      } catch (err) {
+        return Response.json(
+          { error: err instanceof Error ? err.message : "Unknown error" },
+          { status: 500 },
+        );
+      }
+    }
+
     // API: List Releases (by date range)
     if (url.pathname === "/api/releases" && req.method === "GET") {
-      const from = url.searchParams.get("from") || new Date().toISOString().split("T")[0];
-      const to = url.searchParams.get("to") || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0];
+      const now = new Date();
+      const from =
+        url.searchParams.get("from") || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const to =
+        url.searchParams.get("to") || new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 
       try {
         const releases = listReleasesBetween(from, to);
@@ -94,7 +100,7 @@ Bun.serve({
     if (url.pathname === "/api/check-new" && req.method === "POST") {
       try {
         const newReleases = await checkNew();
-        return Response.json({ newReleases });
+        return Response.json({ newReleases, count: newReleases.length });
       } catch (err) {
         return Response.json(
           { error: err instanceof Error ? err.message : "Unknown error" },
@@ -107,4 +113,4 @@ Bun.serve({
   },
 });
 
-console.log("Release Watcher UI running at http://localhost:3000");
+console.log("Release Watcher UI → http://localhost:3000");
