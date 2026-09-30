@@ -4,45 +4,61 @@ Persönlicher Multi-Plattform Media-Tracker: Release-Radar (was/wann/wo neu, mit
 pro Release) + manuelles Progress-Tracking. CLI und Web-UI, Quellen ausschließlich über
 APIs (TMDB, AniList, MangaDex, TVDB).
 
-## Setup
+## Quickstart
 
 ```bash
-bun install
-cp .env.example .env   # TMDB_API_KEY / TVDB_API_KEY eintragen
+bun run start setup        # prüft Bun, installiert deps, erstellt .env
+# .env öffnen → TMDB_API_KEY und TVDB_API_KEY eintragen
+bun run start setup --seed  # optional: Testdaten für die UI laden
 ```
 
-## Quellen
-
-| Quelle     | Inhalt              | API-Key nötig |
-|------------|---------------------|---------------|
-| `tmdb`     | Serien & Filme      | ja            |
-| `anilist`  | Anime & Manga (Meta)| nein          |
-| `mangadex` | Manga-Kapitel       | nein          |
-| `tvdb`     | DE/AT-Reality & TV  | ja            |
-
-## Commands
-
-### CLI
+## CLI Commands
 
 ```bash
-bun run start add [--source <tmdb|anilist|mangadex|tvdb>] <query>  # Titel hinzufügen
-bun run start list                                                  # Watchlist anzeigen
-bun run start check-new                                             # neue Releases prüfen
-bun run start status <id> <status>                                  # watching | plan | done | dropped
-bun run start progress <id> <number>                                # Fortschritt setzen
-bun run start rm <id>                                               # Titel entfernen
-bun run start --help
+bun run start <command>
 ```
 
-### Web UI
+| Command | Beschreibung |
+|---------|-------------|
+| `setup [--seed]` | Prüft ob alles installiert ist, richtet `.env` ein. `--seed` lädt Testdaten. |
+| `add [--source <src>] <query>` | Titel suchen und zur Watchlist hinzufügen. Default-Quelle: `tmdb`. |
+| `list` | Watchlist anzeigen (inkl. Progress). |
+| `check-new` | Neue Releases für alle Titel der Watchlist prüfen und speichern. |
+| `status <id> <status>` | Status setzen: `watching`, `plan`, `done`, `dropped`. |
+| `progress <id> <number>` | Fortschritt manuell setzen (z.B. letzte gesehene Episode). |
+| `rm <id>` | Titel aus der Watchlist entfernen. |
+| `--help` | Hilfe anzeigen. |
+
+### Beispiele
+
+```bash
+bun run start add "Breaking Bad"                    # TMDB-Suche
+bun run start add --source anilist "Attack on Titan" # AniList-Suche
+bun run start list                                   # Watchlist
+bun run start check-new                              # neue Releases holen
+bun run start status 1 watching                      # Status ändern
+bun run start progress 1 42                          # Episode 42 gesehen
+bun run start rm 3                                   # Titel löschen
+```
+
+## Web UI
 
 ```bash
 bun run ui
-# Öffne http://localhost:3000
+# → http://localhost:3000
 ```
 
-Web-UI mit Suche (TMDB), Kalender-Ansicht der Releases, und „Check new"-Button.
-Minimales Design: dunkles Theme, Gold-Akzent, Serif-Header.
+Minimales Dark-Theme mit Searchbar (TMDB), Monats-Kalender mit Release-Chips
+und „Check new"-Button.
+
+## Quellen
+
+| Quelle | Inhalt | API-Key nötig |
+|--------|--------|---------------|
+| `tmdb` | Serien & Filme | ja |
+| `anilist` | Anime & Manga (Meta) | nein |
+| `mangadex` | Manga-Kapitel | nein |
+| `tvdb` | DE/AT-Reality & TV | ja |
 
 ## Tests
 
