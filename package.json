@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun src/cli/index.ts"
+    "start": "bun src/cli/index.ts",
+    "ui": "bun src/ui/server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

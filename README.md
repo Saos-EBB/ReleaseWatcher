@@ -1,7 +1,7 @@
 # release-watcher
 
 Persönlicher Multi-Plattform Media-Tracker: Release-Radar (was/wann/wo neu, mit Link
-pro Release) + manuelles Progress-Tracking. CLI-only, Quellen ausschließlich über
+pro Release) + manuelles Progress-Tracking. CLI und Web-UI, Quellen ausschließlich über
 APIs (TMDB, AniList, MangaDex, TVDB).
 
 ## Setup
@@ -22,18 +22,27 @@ cp .env.example .env   # TMDB_API_KEY / TVDB_API_KEY eintragen
 
 ## Commands
 
+### CLI
+
 ```bash
-bun src/cli/index.ts add [--source <tmdb|anilist|mangadex|tvdb>] <query>
-                                           # Quelle durchsuchen (default tmdb), Treffer wählen, zur Watchlist hinzufügen
-bun src/cli/index.ts list                 # Watchlist anzeigen (status watching/plan)
-bun src/cli/index.ts check-new            # neue Releases der Watchlist prüfen und speichern
-bun src/cli/index.ts status <id> <status> # watching | plan | done | dropped
-bun src/cli/index.ts progress <id> <number> # Fortschritt manuell setzen (z.B. letztes gesehenes Kapitel/Episode)
-bun src/cli/index.ts rm <id>              # Titel entfernen
-bun src/cli/index.ts --help
+bun run start add [--source <tmdb|anilist|mangadex|tvdb>] <query>  # Titel hinzufügen
+bun run start list                                                  # Watchlist anzeigen
+bun run start check-new                                             # neue Releases prüfen
+bun run start status <id> <status>                                  # watching | plan | done | dropped
+bun run start progress <id> <number>                                # Fortschritt setzen
+bun run start rm <id>                                               # Titel entfernen
+bun run start --help
 ```
 
-`bun run start` ist ein Alias für `bun src/cli/index.ts`.
+### Web UI
+
+```bash
+bun run ui
+# Öffne http://localhost:3000
+```
+
+Web-UI mit Suche (TMDB), Kalender-Ansicht der Releases, und „Check new"-Button.
+Minimales Design: dunkles Theme, Gold-Akzent, Serif-Header.
 
 ## Tests
 

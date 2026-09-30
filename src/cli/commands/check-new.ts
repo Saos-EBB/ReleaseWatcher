@@ -1,30 +1,20 @@
-import { listSourceRefsForTitle, listWatchlist, saveReleaseIfNew } from "../../core/ops";
-import { getSource } from "../../sources/index";
+import { checkNew } from "../../core/ops";
 
 export async function checkNewCommand(): Promise<void> {
-  const titles = listWatchlist();
-  let foundAny = false;
+  const newReleases = await checkNew();
 
-  for (const title of titles) {
-    const refs = listSourceRefsForTitle(title.id);
-    for (const ref of refs) {
-      const source = getSource(ref.source);
-      const releases = await source.getReleases(ref);
-      for (const release of releases) {
-        if (!saveReleaseIfNew(title.id, ref.source, release)) continue;
-        foundAny = true;
-        const seasonLabel = release.season != null ? `S${release.season}` : "";
-        const nameLabel = release.name ? ` "${release.name}"` : "";
-        const providerLabel = release.provider ? ` auf ${release.provider}` : "";
-        console.log(
-          `[${title.id}] ${title.name} — ${seasonLabel}E${release.number}${nameLabel} ` +
-            `(${release.air_date ?? "kein Datum"})${providerLabel} — ${release.url ?? "kein Link"}`,
-        );
-      }
-    }
+  if (newReleases.length === 0) {
+    console.log("Keine neuen Releases.");
+    return;
   }
 
-  if (!foundAny) {
-    console.log("Keine neuen Releases.");
+  for (const item of newReleases) {
+    const seasonLabel = item.release.season != null ? `S${item.release.season}` : "";
+    const nameLabel = item.release.name ? ` "${item.release.name}"` : "";
+    const providerLabel = item.release.provider ? ` auf ${item.release.provider}` : "";
+    console.log(
+      `[${item.titleId}] ${item.titleName} — ${seasonLabel}E${item.release.number}${nameLabel} ` +
+        `(${item.release.air_date ?? "kein Datum"})${providerLabel} — ${item.release.url ?? "kein Link"}`,
+    );
   }
 }
