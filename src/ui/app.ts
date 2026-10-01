@@ -32,6 +32,8 @@ interface TitleEntry {
 // ── State ──
 
 let searchResults: SearchResult[] = [];
+let activeIdx = -1;
+let lastQuery = "";
 let viewDate = new Date();
 let releases: ReleaseEntry[] = [];
 
@@ -40,6 +42,7 @@ let releases: ReleaseEntry[] = [];
 const $searchInput = document.getElementById("searchInput") as HTMLInputElement;
 const $sourceSelect = document.getElementById("sourceSelect") as HTMLSelectElement;
 const $searchResults = document.getElementById("searchResults") as HTMLDivElement;
+const $searchSpinner = document.getElementById("searchSpinner") as HTMLDivElement;
 const $calendar = document.getElementById("calendar") as HTMLDivElement;
 const $monthLabel = document.getElementById("calendarMonth") as HTMLHeadingElement;
 const $checkNew = document.getElementById("checkNewBtn") as HTMLButtonElement;
@@ -56,22 +59,86 @@ let searchTimeout: ReturnType<typeof setTimeout>;
 
 $searchInput.addEventListener("input", () => {
   clearTimeout(searchTimeout);
+  const q = $searchInput.value.trim();
+  if (q.length < 2) {
+    closeSearch();
+    $searchSpinner.classList.remove("active");
+    return;
+  }
+  $searchSpinner.classList.add("active");
   searchTimeout = setTimeout(doSearch, 300);
 });
 
-document.addEventListener("click", (e) => {
-  if (!(e.target as HTMLElement).closest(".search-section")) {
-    $searchResults.classList.remove("visible");
+$searchInput.addEventListener("keydown", (e) => {
+  if (!$searchResults.classList.contains("visible")) return;
+
+  const items = $searchResults.querySelectorAll(".search-result-item[data-idx]");
+  const count = items.length;
+  if (count === 0) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    activeIdx = activeIdx < count - 1 ? activeIdx + 1 : 0;
+    updateActiveItem(items);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    activeIdx = activeIdx > 0 ? activeIdx - 1 : count - 1;
+    updateActiveItem(items);
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (activeIdx >= 0 && activeIdx < count) {
+      doAddTitle(activeIdx);
+    }
+  } else if (e.key === "Escape") {
+    closeSearch();
+    $searchInput.blur();
   }
 });
+
+function updateActiveItem(items: NodeListOf<Element>) {
+  items.forEach((el, i) => {
+    el.classList.toggle("active", i === activeIdx);
+  });
+  if (activeIdx >= 0 && items[activeIdx]) {
+    items[activeIdx].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function closeSearch() {
+  $searchResults.classList.remove("visible");
+  activeIdx = -1;
+}
+
+document.addEventListener("click", (e) => {
+  if (!(e.target as HTMLElement).closest(".search-section")) {
+    closeSearch();
+  }
+});
+
+$sourceSelect.addEventListener("change", () => {
+  if ($searchInput.value.trim().length >= 2) doSearch();
+});
+
+function highlightMatch(text: string, query: string): string {
+  const escaped = escapeHtml(text);
+  if (!query) return escaped;
+  const words = query.split(/\s+/).filter(Boolean).map(w =>
+    w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  if (words.length === 0) return escaped;
+  const re = new RegExp(`(${words.join("|")})`, "gi");
+  return escaped.replace(re, "<mark>$1</mark>");
+}
 
 async function doSearch() {
   const q = $searchInput.value.trim();
   if (q.length < 2) {
-    $searchResults.classList.remove("visible");
+    closeSearch();
+    $searchSpinner.classList.remove("active");
     return;
   }
 
+  lastQuery = q;
   const source = $sourceSelect.value;
 
   try {
@@ -80,14 +147,17 @@ async function doSearch() {
 
     if (data.error) {
       toast(data.error, true);
+      $searchSpinner.classList.remove("active");
       return;
     }
 
     searchResults = data.results || [];
+    activeIdx = -1;
 
     if (searchResults.length === 0) {
       $searchResults.innerHTML = `<div class="search-result-item"><span class="result-title" style="color:var(--text-muted)">Keine Treffer</span></div>`;
       $searchResults.classList.add("visible");
+      $searchSpinner.classList.remove("active");
       return;
     }
 
@@ -96,7 +166,7 @@ async function doSearch() {
         (r, i) => `
       <div class="search-result-item" data-idx="${i}">
         <div class="result-title">
-          <span class="result-type">${escapeHtml(r.type)}</span>${escapeHtml(r.name)}
+          <span class="result-type">${escapeHtml(r.type)}</span>${highlightMatch(r.name, lastQuery)}
         </div>
         <button type="button" class="add-btn" data-idx="${i}">+ Add</button>
       </div>`,
@@ -111,10 +181,20 @@ async function doSearch() {
       });
     });
 
+    $searchResults.querySelectorAll(".search-result-item[data-idx]").forEach((item) => {
+      item.addEventListener("mouseenter", () => {
+        activeIdx = Number((item as HTMLElement).dataset.idx);
+        const items = $searchResults.querySelectorAll(".search-result-item[data-idx]");
+        updateActiveItem(items);
+      });
+    });
+
     $searchResults.classList.add("visible");
   } catch (err) {
     console.error("Search error:", err);
     toast("Suche fehlgeschlagen", true);
+  } finally {
+    $searchSpinner.classList.remove("active");
   }
 }
 
@@ -145,7 +225,7 @@ async function doAddTitle(idx: number) {
 
     toast(`${result.name} hinzugefügt`);
     $searchInput.value = "";
-    $searchResults.classList.remove("visible");
+    closeSearch();
     searchResults = [];
     await Promise.all([loadReleases(), loadWatchlist()]);
   } catch (err) {
