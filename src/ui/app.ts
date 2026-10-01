@@ -21,15 +21,24 @@ interface ReleaseEntry {
   url: string | null;
 }
 
+interface TitleEntry {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  added_at: string;
+}
+
 // ── State ──
 
 let searchResults: SearchResult[] = [];
-let viewDate = new Date(); // which month is shown
+let viewDate = new Date();
 let releases: ReleaseEntry[] = [];
 
 // ── DOM ──
 
 const $searchInput = document.getElementById("searchInput") as HTMLInputElement;
+const $sourceSelect = document.getElementById("sourceSelect") as HTMLSelectElement;
 const $searchResults = document.getElementById("searchResults") as HTMLDivElement;
 const $calendar = document.getElementById("calendar") as HTMLDivElement;
 const $monthLabel = document.getElementById("calendarMonth") as HTMLHeadingElement;
@@ -39,6 +48,7 @@ const $next = document.getElementById("nextMonth") as HTMLButtonElement;
 const $titleCount = document.getElementById("titleCount") as HTMLSpanElement;
 const $lastUpdate = document.getElementById("lastUpdate") as HTMLSpanElement;
 const $toast = document.getElementById("toast") as HTMLDivElement;
+const $watchlist = document.getElementById("watchlist") as HTMLDivElement;
 
 // ── Search ──
 
@@ -49,7 +59,6 @@ $searchInput.addEventListener("input", () => {
   searchTimeout = setTimeout(doSearch, 300);
 });
 
-// Close search results on click outside
 document.addEventListener("click", (e) => {
   if (!(e.target as HTMLElement).closest(".search-section")) {
     $searchResults.classList.remove("visible");
@@ -63,8 +72,10 @@ async function doSearch() {
     return;
   }
 
+  const source = $sourceSelect.value;
+
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&source=tmdb`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&source=${source}`);
     const data = await res.json();
 
     if (data.error) {
@@ -85,14 +96,13 @@ async function doSearch() {
         (r, i) => `
       <div class="search-result-item" data-idx="${i}">
         <div class="result-title">
-          <span class="result-type">${r.type}</span>${escapeHtml(r.name)}
+          <span class="result-type">${escapeHtml(r.type)}</span>${escapeHtml(r.name)}
         </div>
         <button type="button" class="add-btn" data-idx="${i}">+ Add</button>
       </div>`,
       )
       .join("");
 
-    // Event delegation for add buttons
     $searchResults.querySelectorAll(".add-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -112,6 +122,8 @@ async function doAddTitle(idx: number) {
   const result = searchResults[idx];
   if (!result) return;
 
+  const source = $sourceSelect.value;
+
   try {
     const res = await fetch("/api/titles", {
       method: "POST",
@@ -119,7 +131,7 @@ async function doAddTitle(idx: number) {
       body: JSON.stringify({
         name: result.name,
         type: result.type,
-        source: "tmdb",
+        source,
         external_id: result.external_id,
       }),
     });
@@ -131,16 +143,89 @@ async function doAddTitle(idx: number) {
       return;
     }
 
-    toast(`✓ ${result.name} hinzugefügt`);
+    toast(`${result.name} hinzugefügt`);
     $searchInput.value = "";
     $searchResults.classList.remove("visible");
     searchResults = [];
-    await loadReleases();
-    await loadTitleCount();
+    await Promise.all([loadReleases(), loadWatchlist()]);
   } catch (err) {
     console.error("Add error:", err);
     toast("Fehler beim Hinzufügen", true);
   }
+}
+
+// ── Watchlist ──
+
+async function loadWatchlist() {
+  try {
+    const res = await fetch("/api/titles");
+    const data = await res.json();
+    const titles: TitleEntry[] = data.titles || [];
+    $titleCount.textContent = String(data.total || 0);
+    renderWatchlist(titles);
+  } catch {
+    $titleCount.textContent = "?";
+  }
+}
+
+function renderWatchlist(titles: TitleEntry[]) {
+  if (titles.length === 0) {
+    $watchlist.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">Noch keine Titel. Nutze die Suche oben!</p>`;
+    return;
+  }
+
+  $watchlist.innerHTML = titles
+    .map(
+      (t) => `
+    <div class="watchlist-card" data-id="${t.id}">
+      <div class="watchlist-card-header">
+        <span class="watchlist-card-name" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</span>
+        <div class="watchlist-card-actions">
+          <button class="btn-danger" data-delete="${t.id}">×</button>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span class="result-type">${escapeHtml(t.type)}</span>
+        <select class="status-select" data-status-id="${t.id}">
+          ${["plan", "watching", "done", "dropped"]
+            .map((s) => `<option value="${s}"${s === t.status ? " selected" : ""}>${s}</option>`)
+            .join("")}
+        </select>
+      </div>
+    </div>`,
+    )
+    .join("");
+
+  $watchlist.querySelectorAll("[data-delete]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number((btn as HTMLElement).dataset.delete);
+      if (!confirm("Titel wirklich entfernen?")) return;
+      try {
+        await fetch(`/api/titles/${id}`, { method: "DELETE" });
+        toast("Titel entfernt");
+        await Promise.all([loadWatchlist(), loadReleases()]);
+      } catch {
+        toast("Fehler beim Entfernen", true);
+      }
+    });
+  });
+
+  $watchlist.querySelectorAll("[data-status-id]").forEach((sel) => {
+    sel.addEventListener("change", async () => {
+      const id = Number((sel as HTMLSelectElement).dataset.statusId);
+      const status = (sel as HTMLSelectElement).value;
+      try {
+        await fetch(`/api/titles/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+        toast(`Status: ${status}`);
+      } catch {
+        toast("Fehler beim Aktualisieren", true);
+      }
+    });
+  });
 }
 
 // ── Calendar ──
@@ -155,18 +240,13 @@ function renderCalendar() {
   }).format(viewDate);
 
   const firstOfMonth = new Date(year, month, 1);
-  const lastOfMonth = new Date(year, month + 1, 0);
-
-  // Monday = 0, Sunday = 6 (ISO week)
   const startDow = (firstOfMonth.getDay() + 6) % 7;
 
-  // Start from Monday of the week that contains the 1st
   const gridStart = new Date(firstOfMonth);
   gridStart.setDate(gridStart.getDate() - startDow);
 
   $calendar.innerHTML = "";
 
-  // Weekday headers
   for (const label of ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]) {
     const el = document.createElement("div");
     el.className = "calendar-weekday";
@@ -174,7 +254,6 @@ function renderCalendar() {
     $calendar.appendChild(el);
   }
 
-  // Build a lookup: date string → releases[]
   const byDate = new Map<string, ReleaseEntry[]>();
   for (const r of releases) {
     if (!r.air_date) continue;
@@ -183,7 +262,6 @@ function renderCalendar() {
     byDate.set(r.air_date, list);
   }
 
-  // Render 6 weeks (42 cells)
   const today = new Date().toISOString().split("T")[0];
   const cursor = new Date(gridStart);
 
@@ -221,7 +299,7 @@ function renderCalendar() {
 
 $prev.addEventListener("click", () => {
   viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-  loadReleases(); // reload for new month range
+  loadReleases();
 });
 
 $next.addEventListener("click", () => {
@@ -245,7 +323,14 @@ $checkNew.addEventListener("click", async () => {
     }
 
     const count = data.count || 0;
-    toast(count > 0 ? `${count} neue Release(s) gefunden` : "Keine neuen Releases");
+    const errors: string[] = data.errors || [];
+
+    if (errors.length > 0) {
+      toast(`${count} neue Release(s), ${errors.length} Fehler`, count === 0);
+    } else {
+      toast(count > 0 ? `${count} neue Release(s) gefunden` : "Keine neuen Releases");
+    }
+
     await loadReleases();
   } catch (err) {
     console.error("Check new error:", err);
@@ -274,16 +359,6 @@ async function loadReleases() {
   }
 }
 
-async function loadTitleCount() {
-  try {
-    const res = await fetch("/api/titles");
-    const data = await res.json();
-    $titleCount.textContent = String(data.total || 0);
-  } catch {
-    $titleCount.textContent = "?";
-  }
-}
-
 // ── Helpers ──
 
 function toDateStr(d: Date): string {
@@ -309,6 +384,6 @@ function toast(msg: string, isError = false) {
 
 // ── Init ──
 
-loadTitleCount();
+loadWatchlist();
 loadReleases();
 $lastUpdate.textContent = new Date().toLocaleDateString("de-DE");

@@ -6,8 +6,10 @@ import {
   addSourceRef,
   listTitles,
   listWatchlist,
+  removeTitle,
+  setStatus,
 } from "../core/ops";
-import type { TitleType } from "../core/types";
+import type { TitleStatus, TitleType } from "../core/types";
 import indexHtml from "./index.html";
 
 Bun.serve({
@@ -51,8 +53,7 @@ Bun.serve({
         const title = addTitle(body.name, body.type);
         addSourceRef(title.id, body.source as any, body.external_id);
 
-        // Immediately fetch releases for this new title
-        const newReleases = await checkNew(title.id);
+        const { newReleases } = await checkNew(title.id);
 
         return Response.json({ title, newReleases }, { status: 201 });
       } catch (err) {
@@ -99,8 +100,39 @@ Bun.serve({
     // API: Check new releases
     if (url.pathname === "/api/check-new" && req.method === "POST") {
       try {
-        const newReleases = await checkNew();
-        return Response.json({ newReleases, count: newReleases.length });
+        const { newReleases, errors } = await checkNew();
+        return Response.json({ newReleases, count: newReleases.length, errors });
+      } catch (err) {
+        return Response.json(
+          { error: err instanceof Error ? err.message : "Unknown error" },
+          { status: 500 },
+        );
+      }
+    }
+
+    // API: Delete title
+    if (url.pathname.startsWith("/api/titles/") && req.method === "DELETE") {
+      const id = Number(url.pathname.split("/").pop());
+      if (isNaN(id)) return Response.json({ error: "Invalid ID" }, { status: 400 });
+      try {
+        removeTitle(id);
+        return Response.json({ ok: true });
+      } catch (err) {
+        return Response.json(
+          { error: err instanceof Error ? err.message : "Unknown error" },
+          { status: 500 },
+        );
+      }
+    }
+
+    // API: Update title status
+    if (url.pathname.startsWith("/api/titles/") && req.method === "PATCH") {
+      const id = Number(url.pathname.split("/").pop());
+      if (isNaN(id)) return Response.json({ error: "Invalid ID" }, { status: 400 });
+      try {
+        const body = (await req.json()) as { status: TitleStatus };
+        setStatus(id, body.status);
+        return Response.json({ ok: true });
       } catch (err) {
         return Response.json(
           { error: err instanceof Error ? err.message : "Unknown error" },

@@ -1,7 +1,11 @@
 import { checkNew } from "../../core/ops";
 
 export async function checkNewCommand(): Promise<void> {
-  const newReleases = await checkNew();
+  const { newReleases, errors } = await checkNew();
+
+  for (const err of errors) {
+    console.error(`Fehler: ${err}`);
+  }
 
   if (newReleases.length === 0) {
     console.log("Keine neuen Releases.");

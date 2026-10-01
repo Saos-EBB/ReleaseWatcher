@@ -109,29 +109,39 @@ export interface NewRelease {
   source: SourceName;
 }
 
-export async function checkNew(titleId?: number): Promise<NewRelease[]> {
+export interface CheckNewResult {
+  newReleases: NewRelease[];
+  errors: string[];
+}
+
+export async function checkNew(titleId?: number): Promise<CheckNewResult> {
   const titles = titleId ? [getTitle(titleId)] : listWatchlist();
   const newReleases: NewRelease[] = [];
+  const errors: string[] = [];
 
   for (const title of titles) {
     if (!title) continue;
     const refs = listSourceRefsForTitle(title.id);
     for (const ref of refs) {
-      const source = getSource(ref.source);
-      const releases = await source.getReleases(ref);
-      for (const release of releases) {
-        if (!saveReleaseIfNew(title.id, ref.source, release)) continue;
-        newReleases.push({
-          titleId: title.id,
-          titleName: title.name,
-          release,
-          source: ref.source,
-        });
+      try {
+        const source = getSource(ref.source);
+        const releases = await source.getReleases(ref);
+        for (const release of releases) {
+          if (!saveReleaseIfNew(title.id, ref.source, release)) continue;
+          newReleases.push({
+            titleId: title.id,
+            titleName: title.name,
+            release,
+            source: ref.source,
+          });
+        }
+      } catch (err) {
+        errors.push(`${title.name} (${ref.source}): ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
 
-  return newReleases;
+  return { newReleases, errors };
 }
 
 export interface ReleaseWithTitleInfo {

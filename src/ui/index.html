@@ -85,7 +85,17 @@
       font-size: 1rem;
       transition: border-color 0.15s;
     }
-    input:focus { outline: none; border-color: var(--accent); }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+    select {
+      padding: 0.65rem 0.85rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
 
     .search-results {
       position: absolute;
@@ -266,6 +276,73 @@
       border-radius: 2px;
     }
 
+    /* ── Watchlist ── */
+    .watchlist-section { margin-bottom: 2.5rem; }
+    .watchlist-section h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+    .watchlist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+    .watchlist-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.15s;
+    }
+    .watchlist-card:hover { border-color: var(--accent-dim); }
+    .watchlist-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .watchlist-card-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .watchlist-card-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+    .watchlist-card-actions button {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.7rem;
+      border-radius: 4px;
+    }
+    .btn-danger { background: var(--red); }
+    .btn-danger:hover { background: #e85555; }
+    .status-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+    .status-badge.watching { background: var(--green); color: #111; }
+    .status-badge.plan { background: var(--yellow); color: #111; }
+    .status-badge.done { background: var(--blue); color: #111; }
+    .status-badge.dropped { background: var(--red); color: #fff; }
+    .status-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 0.7rem;
+      padding: 0.15rem 0.3rem;
+      cursor: pointer;
+    }
+
     /* ── Mobile ── */
     @media (max-width: 700px) {
       header { padding: 1rem; }
@@ -284,9 +361,20 @@
   <main>
     <section class="search-section">
       <div class="search-container">
-        <input type="text" id="searchInput" placeholder="🔍 Serie suchen…" autocomplete="off" />
+        <input type="text" id="searchInput" placeholder="🔍 Titel suchen…" autocomplete="off" />
+        <select id="sourceSelect">
+          <option value="tmdb">TMDB</option>
+          <option value="anilist">AniList</option>
+          <option value="mangadex">MangaDex</option>
+          <option value="tvdb">TVDB</option>
+        </select>
       </div>
       <div class="search-results" id="searchResults"></div>
+    </section>
+
+    <section class="watchlist-section">
+      <h2>Watchlist</h2>
+      <div class="watchlist-grid" id="watchlist"></div>
     </section>
 
     <section class="calendar-section">
