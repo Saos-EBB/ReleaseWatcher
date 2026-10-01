@@ -375,6 +375,34 @@
       padding: 0.15rem 0.3rem;
       cursor: pointer;
     }
+    .rating-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .rating-badge .label {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .rating-badge.imdb { border-color: #f5c518; }
+    .rating-badge.imdb .icon { color: #f5c518; }
+    .rating-badge.rt { border-color: #fa320a; }
+    .rating-badge.rt .icon { color: #fa320a; }
+    .rating-badge.mc { border-color: #6c3; }
+    .rating-badge.mc .icon { color: #6c3; }
 
     /* ── Mobile ── */
     @media (max-width: 700px) {

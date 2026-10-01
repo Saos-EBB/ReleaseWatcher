@@ -171,3 +171,57 @@ export function listReleasesBetween(from: string, to: string): ReleaseWithTitleI
     { $from: from, $to: to },
   );
 }
+
+// ── Ratings ──
+
+export interface Rating {
+  id: number;
+  title_id: number;
+  imdb_id: string | null;
+  imdb_rating: string | null;
+  rotten_tomatoes: string | null;
+  metacritic: string | null;
+  poster: string | null;
+  fetched_at: string;
+}
+
+export function saveRating(
+  titleId: number,
+  imdbId: string | null,
+  imdbRating: string | null,
+  rottenTomatoes: string | null,
+  metacritic: string | null,
+  poster: string | null,
+): void {
+  run(
+    db,
+    `INSERT INTO rating (title_id, imdb_id, imdb_rating, rotten_tomatoes, metacritic, poster, fetched_at)
+     VALUES ($title_id, $imdb_id, $imdb_rating, $rotten_tomatoes, $metacritic, $poster, $fetched_at)
+     ON CONFLICT (title_id) DO UPDATE SET
+       imdb_id = excluded.imdb_id,
+       imdb_rating = excluded.imdb_rating,
+       rotten_tomatoes = excluded.rotten_tomatoes,
+       metacritic = excluded.metacritic,
+       poster = excluded.poster,
+       fetched_at = excluded.fetched_at`,
+    {
+      $title_id: titleId,
+      $imdb_id: imdbId,
+      $imdb_rating: imdbRating,
+      $rotten_tomatoes: rottenTomatoes,
+      $metacritic: metacritic,
+      $poster: poster,
+      $fetched_at: new Date().toISOString(),
+    },
+  );
+}
+
+export function getRating(titleId: number): Rating | null {
+  return one<Rating>(db, `SELECT * FROM rating WHERE title_id = $title_id`, {
+    $title_id: titleId,
+  });
+}
+
+export function listRatings(): Rating[] {
+  return many<Rating>(db, `SELECT * FROM rating`);
+}

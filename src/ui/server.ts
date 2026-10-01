@@ -8,7 +8,10 @@ import {
   listWatchlist,
   removeTitle,
   setStatus,
+  saveRating,
+  listRatings,
 } from "../core/ops";
+import { fetchOmdbByImdbId, fetchOmdbByTitle } from "../sources/omdb";
 import type { TitleStatus, TitleType } from "../core/types";
 import indexHtml from "./index.html";
 
@@ -54,6 +57,8 @@ Bun.serve({
         addSourceRef(title.id, body.source as any, body.external_id);
 
         const { newReleases } = await checkNew(title.id);
+
+        fetchRatingsForTitle(title.id, body.name, body.source, body.external_id, body.type);
 
         return Response.json({ title, newReleases }, { status: 201 });
       } catch (err) {
@@ -141,8 +146,65 @@ Bun.serve({
       }
     }
 
+    // API: Ratings for all titles
+    if (url.pathname === "/api/ratings" && req.method === "GET") {
+      try {
+        const ratings = listRatings();
+        const byTitleId: Record<number, typeof ratings[0]> = {};
+        for (const r of ratings) byTitleId[r.title_id] = r;
+        return Response.json({ ratings: byTitleId });
+      } catch (err) {
+        return Response.json(
+          { error: err instanceof Error ? err.message : "Unknown error" },
+          { status: 500 },
+        );
+      }
+    }
+
     return new Response("Not found", { status: 404 });
   },
 });
+
+async function fetchRatingsForTitle(
+  titleId: number,
+  name: string,
+  source: string,
+  externalId: string,
+  type: TitleType,
+): Promise<void> {
+  try {
+    let imdbId: string | null = null;
+
+    if (source === "tmdb" && process.env.TMDB_API_KEY) {
+      const kind = type === "movie" ? "movie" : "tv";
+      const res = await fetch(
+        `https://api.themoviedb.org/3/${kind}/${externalId}/external_ids?api_key=${process.env.TMDB_API_KEY}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        imdbId = data.imdb_id || null;
+      }
+    }
+
+    let ratings = imdbId ? await fetchOmdbByImdbId(imdbId) : null;
+    if (!ratings) {
+      const omdbType = type === "movie" ? "movie" : "series";
+      ratings = await fetchOmdbByTitle(name, omdbType);
+    }
+
+    if (ratings) {
+      saveRating(
+        titleId,
+        imdbId,
+        ratings.imdb_rating,
+        ratings.rotten_tomatoes,
+        ratings.metacritic,
+        ratings.poster,
+      );
+    }
+  } catch (err) {
+    console.error(`Rating fetch failed for "${name}":`, err);
+  }
+}
 
 console.log("Release Watcher UI → http://localhost:3000");

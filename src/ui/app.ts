@@ -29,6 +29,13 @@ interface TitleEntry {
   added_at: string;
 }
 
+interface RatingInfo {
+  imdb_rating: string | null;
+  rotten_tomatoes: string | null;
+  metacritic: string | null;
+  poster: string | null;
+}
+
 // ── State ──
 
 let searchResults: SearchResult[] = [];
@@ -36,6 +43,7 @@ let activeIdx = -1;
 let lastQuery = "";
 let viewDate = new Date();
 let releases: ReleaseEntry[] = [];
+let ratings: Record<number, RatingInfo> = {};
 
 // ── DOM ──
 
@@ -228,6 +236,10 @@ async function doAddTitle(idx: number) {
     closeSearch();
     searchResults = [];
     await Promise.all([loadReleases(), loadWatchlist()]);
+    setTimeout(async () => {
+      await loadRatings();
+      loadWatchlist();
+    }, 2000);
   } catch (err) {
     console.error("Add error:", err);
     toast("Fehler beim Hinzufügen", true);
@@ -246,6 +258,23 @@ async function loadWatchlist() {
   } catch {
     $titleCount.textContent = "?";
   }
+}
+
+function ratingBadges(titleId: number): string {
+  const r = ratings[titleId];
+  if (!r) return "";
+  const badges: string[] = [];
+  if (r.imdb_rating) {
+    badges.push(`<span class="rating-badge imdb"><span class="icon">★</span> ${r.imdb_rating}</span>`);
+  }
+  if (r.rotten_tomatoes) {
+    badges.push(`<span class="rating-badge rt"><span class="icon">🍅</span> ${r.rotten_tomatoes}</span>`);
+  }
+  if (r.metacritic) {
+    badges.push(`<span class="rating-badge mc"><span class="icon">M</span> ${r.metacritic}</span>`);
+  }
+  if (badges.length === 0) return "";
+  return `<div class="rating-row">${badges.join("")}</div>`;
 }
 
 function renderWatchlist(titles: TitleEntry[]) {
@@ -272,6 +301,7 @@ function renderWatchlist(titles: TitleEntry[]) {
             .join("")}
         </select>
       </div>
+      ${ratingBadges(t.id)}
     </div>`,
     )
     .join("");
@@ -423,6 +453,16 @@ $checkNew.addEventListener("click", async () => {
 
 // ── Data loading ──
 
+async function loadRatings() {
+  try {
+    const res = await fetch("/api/ratings");
+    const data = await res.json();
+    ratings = data.ratings || {};
+  } catch {
+    // ratings are optional
+  }
+}
+
 async function loadReleases() {
   try {
     const year = viewDate.getFullYear();
@@ -464,6 +504,11 @@ function toast(msg: string, isError = false) {
 
 // ── Init ──
 
-loadWatchlist();
-loadReleases();
-$lastUpdate.textContent = new Date().toLocaleDateString("de-DE");
+async function init() {
+  await loadRatings();
+  loadWatchlist();
+  loadReleases();
+  $lastUpdate.textContent = new Date().toLocaleDateString("de-DE");
+}
+
+init();
