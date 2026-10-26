@@ -22,15 +22,11 @@ interface ReleasesQuery {
 
 Bun.serve({
   port: 3000,
+  routes: {
+    "/": indexHtml,
+  },
   async fetch(req) {
     const url = new URL(req.url);
-
-    // Serve HTML
-    if (url.pathname === "/") {
-      return new Response(indexHtml, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
-    }
 
     // API: Search
     if (url.pathname === "/api/search" && req.method === "GET") {
