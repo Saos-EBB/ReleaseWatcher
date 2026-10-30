@@ -45,4 +45,17 @@ export function runMigrations(db: Database): void {
       updated_at TEXT NOT NULL
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS rating (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title_id INTEGER NOT NULL UNIQUE REFERENCES title(id),
+      imdb_id TEXT,
+      imdb_rating TEXT,
+      rotten_tomatoes TEXT,
+      metacritic TEXT,
+      poster TEXT,
+      fetched_at TEXT NOT NULL
+    )
+  `);
 }

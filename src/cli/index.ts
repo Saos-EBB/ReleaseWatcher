@@ -3,25 +3,31 @@ import { checkNewCommand } from "./commands/check-new";
 import { listCommand } from "./commands/list";
 import { progressCommand } from "./commands/progress";
 import { rmCommand } from "./commands/rm";
+import { setupCommand } from "./commands/setup";
 import { statusCommand } from "./commands/status";
 
 const HELP = `release-watcher
 
 Usage:
-  add [--source <tmdb|anilist|mangadex|tvdb>] <query>
-                           Titel suchen (default tmdb) und zur Watchlist hinzufügen
+  setup [--seed]           Prüft ob alles installiert ist, richtet .env ein
+  add [--source <src>] <q> Titel suchen und zur Watchlist hinzufügen
   list                     Watchlist anzeigen (inkl. Progress)
   check-new                Neue Releases für die Watchlist prüfen
   status <id> <status>     Status setzen (watching|plan|done|dropped)
   progress <id> <number>   Fortschritt manuell setzen
   rm <id>                  Titel entfernen
   --help                   Diese Hilfe anzeigen
+
+Quellen für --source: tmdb (default), anilist, mangadex, tvdb
 `;
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
 
   switch (command) {
+    case "setup":
+      await setupCommand(args);
+      break;
     case "add":
       await addCommand(args);
       break;
